@@ -29,4 +29,5 @@ coverage
 
 *.tsbuildinfo
 
-PPTist-SourceCode
+PPTist-SourceCode/PPTist-master/node_modules
+PPTist-SourceCode/PPTist-master.zip
