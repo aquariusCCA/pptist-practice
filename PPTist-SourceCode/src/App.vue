@@ -1,8 +1,13 @@
 <template>
   <template v-if="slides.length">
+    <!-- 
     <Screen v-if="screening" />
     <Editor v-else-if="_isPC" />
-    <Mobile v-else />
+    <Mobile v-else /> 
+    -->
+    
+    <!-- 為了方便學習，從桌機版開始 -->
+    <Editor />
   </template>
   <FullscreenSpin tip="数据初始化中，请稍等 ..." v-else  loading :mask="false" />
 </template>

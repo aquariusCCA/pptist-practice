@@ -22,6 +22,7 @@ export default defineConfig({
   },
   css: {
     preprocessorOptions: {
+      // NOTE: /pptist-practice/note/vite/Vite中使用SCSS(Vue3).md
       scss: {
         additionalData: `
           @import '@/assets/styles/variable.scss';

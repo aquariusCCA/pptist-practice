@@ -140,6 +140,7 @@ import {
 } from '@icon-park/vue-next'
 
 export interface Icons {
+  // NOTE: /pptist-practice/note/typescript/typeof用法.md
   [key: string]: typeof PlayOne
 }
 

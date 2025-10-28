@@ -1,4 +1,6 @@
 import type { Directive, DirectiveBinding } from 'vue'
+
+// NOTE: [Tippy 官網](https://atomiks.github.io/tippyjs/v6/methods/)
 import tippy, { type Instance, type Placement } from 'tippy.js'
 
 import './tooltip.scss'

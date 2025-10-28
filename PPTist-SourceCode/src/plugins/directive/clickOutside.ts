@@ -9,6 +9,7 @@ interface CustomHTMLElement extends HTMLElement {
 const clickListener = (el: HTMLElement, event: MouseEvent, binding: DirectiveBinding) => {
   const handler = binding.value
 
+  // NOTE: /pptist-practice/note/javascript/composedPath.md
   const path = event.composedPath()
   const isClickOutside = path ? path.indexOf(el) < 0 : !el.contains(event.target as HTMLElement)
 
