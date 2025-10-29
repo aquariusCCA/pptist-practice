@@ -49,6 +49,7 @@ const { viewportRatio, viewportSize } = storeToRefs(useSlidesStore())
 const background = computed(() => props.slide.background)
 const { backgroundStyle } = useSlideBackgroundStyle(background)
 
+// NOTE: /pptist-practice/note/功能相關/PPT 畫布的邏輯座標.md
 const scale = computed(() => props.size / viewportSize.value)
 provide(injectKeySlideScale, scale)
 </script>

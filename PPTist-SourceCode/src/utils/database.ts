@@ -25,7 +25,7 @@ export const deleteDiscardedDB = async () => {
 
   const localStorageDiscardedDB = localStorage.getItem(LOCALSTORAGE_KEY_DISCARDED_DB)
   const localStorageDiscardedDBList: string[] = localStorageDiscardedDB ? JSON.parse(localStorageDiscardedDB) : []
-
+  
   const databaseNames = await Dexie.getDatabaseNames()
   const discardedDBNames = databaseNames.filter(name => {
     if (name.indexOf(databaseNamePrefix) === -1) return false

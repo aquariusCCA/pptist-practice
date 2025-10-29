@@ -50,6 +50,7 @@ export const useSlidesStore = defineStore('slides', {
     }, // 主题样式
     slides: [], // 幻灯片页面数据
     slideIndex: 0, // 当前页面索引
+    // NOTE: /pptist-practice/note/功能相關/PPT 畫布的邏輯座標.md
     viewportSize: 1000, // 可视区域宽度基数
     viewportRatio: 0.5625, // 可视区域比例，默认16:9
     templates: [

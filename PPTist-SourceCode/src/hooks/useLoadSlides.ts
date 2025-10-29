@@ -8,11 +8,12 @@ export default () => {
   const timer = ref<number | null>(null)
   const slidesLoadLimit = ref(50)
 
+  // 分批載入縮圖
   const loadSlide = () => {
     if (slides.value.length > slidesLoadLimit.value) {
       timer.value = setTimeout(() => {
         slidesLoadLimit.value = slidesLoadLimit.value + 20
-        loadSlide()
+        loadSlide() // 遞迴再檢查，直到足夠
       }, 600)
     }
     else slidesLoadLimit.value = 9999
