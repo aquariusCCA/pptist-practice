@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Demo 03 - 滑鼠為什麼要除以 canvasScale</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #eef1f7;
+        --card: rgba(255, 255, 255, 0.9);
+        --line: rgba(45, 58, 88, 0.16);
+        --text: #1f2d45;
+        --muted: #5e6b83;
+        --accent: #456de6;
+        --accent-soft: rgba(69, 109, 230, 0.15);
+        --danger: #d94c67;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Segoe UI", sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top center, rgba(69, 109, 230, 0.16), transparent 36%),
+          linear-gradient(135deg, #fbfcff, var(--bg));
+      }
+
+      main {
+        width: min(1180px, calc(100vw - 32px));
+        margin: 0 auto;
+        padding: 32px 0 40px;
+      }
+
+      h1,
+      h2,
+      p {
+        margin: 0;
+      }
+
+      .hero,
+      .panel {
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        background: var(--card);
+        backdrop-filter: blur(18px);
+        box-shadow: 0 20px 60px rgba(31, 45, 69, 0.08);
+      }
+
+      .hero {
+        padding: 28px;
+        margin-bottom: 24px;
+      }
+
+      .hero p {
+        margin-top: 12px;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 320px minmax(0, 1fr);
+        gap: 24px;
+      }
+
+      .panel {
+        padding: 20px;
+      }
+
+      .controls {
+        display: grid;
+        gap: 16px;
+      }
+
+      .controls label {
+        display: grid;
+        gap: 8px;
+        font-weight: 700;
+      }
+
+      input[type="range"] {
+        width: 100%;
+      }
+
+      .stat {
+        padding: 14px 16px;
+        border-radius: 18px;
+        background: rgba(69, 109, 230, 0.08);
+      }
+
+      .stat strong {
+        display: block;
+        margin-bottom: 6px;
+      }
+
+      .code {
+        padding: 16px;
+        border-radius: 16px;
+        background: #182338;
+        color: #edf2fd;
+        font-family: Consolas, monospace;
+        line-height: 1.7;
+        white-space: pre-wrap;
+      }
+
+      .stage h2 {
+        font-size: 18px;
+      }
+
+      .stage p {
+        margin-top: 8px;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      .frame {
+        position: relative;
+        margin-top: 16px;
+        overflow: hidden;
+        border-radius: 18px;
+        border: 2px solid rgba(31, 45, 69, 0.16);
+        background:
+          linear-gradient(rgba(31, 45, 69, 0.05) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(31, 45, 69, 0.05) 1px, transparent 1px),
+          #f8faff;
+        background-size: 40px 40px;
+        cursor: crosshair;
+      }
+
+      .viewport {
+        position: relative;
+        width: 1000px;
+        height: 562.5px;
+        transform-origin: 0 0;
+        background: rgba(255, 255, 255, 0.76);
+      }
+
+      .box {
+        position: absolute;
+        left: 100px;
+        top: 50px;
+        width: 200px;
+        height: 80px;
+        border-radius: 18px;
+        border: 2px solid var(--accent);
+        background: linear-gradient(180deg, rgba(69, 109, 230, 0.22), rgba(255, 255, 255, 0.92));
+        padding: 14px 16px;
+      }
+
+      .box h3,
+      .box p {
+        margin: 0;
+      }
+
+      .box p {
+        margin-top: 6px;
+        color: #506483;
+      }
+
+      .marker {
+        position: absolute;
+        width: 16px;
+        height: 16px;
+        margin-left: -8px;
+        margin-top: -8px;
+        border-radius: 50%;
+        border: 3px solid white;
+        background: var(--danger);
+        box-shadow: 0 0 0 4px rgba(217, 76, 103, 0.18);
+        pointer-events: none;
+      }
+
+      .note {
+        margin-top: 16px;
+        padding: 14px 16px;
+        border-radius: 16px;
+        background: rgba(69, 109, 230, 0.08);
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      @media (max-width: 960px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero">
+        <h1>例子 3：滑鼠為什麼要除以 canvasScale</h1>
+        <p>
+          畫面上的滑鼠點是螢幕座標，但投影片資料要寫回邏輯座標。請在右側畫布點一下，
+          你會同時看到 `screen` 與 `world` 兩組數值，並對照 `world = screen / canvasScale`。
+        </p>
+      </section>
+
+      <section class="layout">
+        <article class="panel controls">
+          <label for="scale">
+            canvasScale
+            <input id="scale" type="range" min="0.4" max="1.2" step="0.1" value="0.5" />
+          </label>
+          <div class="stat">
+            <strong>目前倍率</strong>
+            <span id="scale-value">0.5</span>
+          </div>
+          <div class="stat">
+            <strong>最近一次點擊的螢幕座標</strong>
+            <span id="screen-point">screenX: -, screenY: -</span>
+          </div>
+          <div class="stat">
+            <strong>換算後的邏輯座標</strong>
+            <span id="world-point">worldX: -, worldY: -</span>
+          </div>
+          <div class="code" id="code-block">const worldX = screenX / canvasScale
+const worldY = screenY / canvasScale</div>
+        </article>
+
+        <article class="panel stage">
+          <h2>點擊縮放後的畫布</h2>
+          <p>同一筆元素資料放在邏輯畫布 `(100, 50)`。畫面上的位置會隨倍率改變，但資料定義不變。</p>
+          <div class="frame" id="frame">
+            <div class="viewport" id="viewport">
+              <div class="box">
+                <h3>文字框</h3>
+                <p>邏輯座標固定是 left 100 / top 50</p>
+              </div>
+              <div class="marker" id="marker" hidden></div>
+            </div>
+          </div>
+          <div class="note">
+            如果倍率是 `0.5`，你在畫面上點到 `screenX = 50`，它其實對應的是
+            `worldX = 100`。因為這張畫布只是被整體縮小，邏輯世界本身沒有變小。
+          </div>
+        </article>
+      </section>
+    </main>
+
+    <script>
+      const scaleInput = document.querySelector("#scale")
+      const scaleValue = document.querySelector("#scale-value")
+      const frame = document.querySelector("#frame")
+      const viewport = document.querySelector("#viewport")
+      const marker = document.querySelector("#marker")
+      const screenPoint = document.querySelector("#screen-point")
+      const worldPoint = document.querySelector("#world-point")
+      const codeBlock = document.querySelector("#code-block")
+
+      const renderScale = () => {
+        const scale = Number(scaleInput.value)
+        scaleValue.textContent = scale.toFixed(1)
+        frame.style.width = `${1000 * scale}px`
+        frame.style.height = `${562.5 * scale}px`
+        viewport.style.transform = `scale(${scale})`
+      }
+
+      scaleInput.addEventListener("input", renderScale)
+
+      frame.addEventListener("click", (event) => {
+        const scale = Number(scaleInput.value)
+        const rect = frame.getBoundingClientRect()
+        const screenX = Math.round(event.clientX - rect.left)
+        const screenY = Math.round(event.clientY - rect.top)
+        const worldX = Math.round(screenX / scale)
+        const worldY = Math.round(screenY / scale)
+
+        marker.hidden = false
+        marker.style.left = `${screenX / scale}px`
+        marker.style.top = `${screenY / scale}px`
+
+        screenPoint.textContent = `screenX: ${screenX}, screenY: ${screenY}`
+        worldPoint.textContent = `worldX: ${worldX}, worldY: ${worldY}`
+        codeBlock.textContent = `const screenX = ${screenX}
+const screenY = ${screenY}
+const canvasScale = ${scale.toFixed(1)}
+
+const worldX = screenX / canvasScale // ${worldX}
+const worldY = screenY / canvasScale // ${worldY}`
+      })
+
+      renderScale()
+    </script>
+  </body>
+</html>

@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Demo 01 - 資料怎麼看</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f4efe7;
+        --card: rgba(255, 255, 255, 0.88);
+        --line: rgba(49, 63, 80, 0.18);
+        --text: #213140;
+        --muted: #5d6c79;
+        --accent: #d5673f;
+        --accent-soft: rgba(213, 103, 63, 0.16);
+        --viewport: #fffdf9;
+        --grid: rgba(33, 49, 64, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Segoe UI", sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top left, rgba(213, 103, 63, 0.18), transparent 34%),
+          linear-gradient(135deg, #f9f5ef, var(--bg));
+      }
+
+      main {
+        width: min(1100px, calc(100vw - 32px));
+        margin: 0 auto;
+        padding: 32px 0 40px;
+      }
+
+      h1,
+      h2,
+      p {
+        margin: 0;
+      }
+
+      .hero,
+      .panel {
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        background: var(--card);
+        backdrop-filter: blur(18px);
+        box-shadow: 0 20px 60px rgba(33, 49, 64, 0.08);
+      }
+
+      .hero {
+        padding: 28px;
+        margin-bottom: 24px;
+      }
+
+      .hero p {
+        margin-top: 12px;
+        max-width: 760px;
+        line-height: 1.7;
+        color: var(--muted);
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 340px minmax(0, 1fr);
+        gap: 24px;
+      }
+
+      .panel {
+        padding: 20px;
+      }
+
+      .panel h2 {
+        font-size: 18px;
+      }
+
+      .panel p {
+        margin-top: 8px;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      .code {
+        margin-top: 16px;
+        padding: 16px;
+        border-radius: 16px;
+        background: #18222c;
+        color: #edf3f7;
+        font-family: Consolas, monospace;
+        line-height: 1.7;
+        white-space: pre-wrap;
+      }
+
+      .list {
+        margin: 16px 0 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .list li {
+        padding: 12px 0;
+        border-bottom: 1px solid rgba(49, 63, 80, 0.12);
+        color: var(--muted);
+      }
+
+      .list strong {
+        color: var(--text);
+      }
+
+      .stage {
+        display: grid;
+        place-items: center;
+        min-height: 560px;
+        overflow: auto;
+        background:
+          linear-gradient(rgba(33, 49, 64, 0.06) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(33, 49, 64, 0.06) 1px, transparent 1px),
+          #f8f2e8;
+        background-size: 40px 40px;
+        border-radius: 20px;
+        padding: 24px;
+      }
+
+      .viewport {
+        position: relative;
+        width: 1000px;
+        height: 562.5px;
+        background: var(--viewport);
+        border: 2px solid rgba(33, 49, 64, 0.2);
+        box-shadow: 0 20px 60px rgba(33, 49, 64, 0.16);
+      }
+
+      .box {
+        position: absolute;
+        display: grid;
+        align-content: start;
+        gap: 8px;
+        padding: 14px 16px;
+        border-radius: 20px;
+        border: 2px solid var(--accent);
+        background: linear-gradient(180deg, rgba(213, 103, 63, 0.24), rgba(255, 255, 255, 0.9));
+      }
+
+      .box h3 {
+        margin: 0;
+        font-size: 18px;
+      }
+
+      .box p {
+        margin: 0;
+        color: #5f473e;
+        line-height: 1.5;
+      }
+
+      .tag {
+        display: inline-flex;
+        width: fit-content;
+        align-items: center;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: var(--accent-soft);
+        color: var(--accent);
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .axis {
+        position: absolute;
+        inset: 12px auto auto 12px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(33, 49, 64, 0.08);
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      @media (max-width: 900px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+
+        .stage {
+          min-height: auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero">
+        <h1>例子 1：資料怎麼看</h1>
+        <p>
+          這個 demo 把元素資料直接畫到固定的邏輯畫布上。重點不是螢幕尺寸，而是
+          `left / top / width / height` 在 `1000 x 562.5` 這個世界裡的意思。
+        </p>
+      </section>
+
+      <section class="layout">
+        <article class="panel">
+          <h2>元素資料</h2>
+          <p>先把它當成投影片世界裡的矩形定義，不要先把它理解成螢幕像素大小。</p>
+          <div class="code">const element = {
+  left: 100,
+  top: 50,
+  width: 200,
+  height: 80,
+}       </div>
+
+          <ul class="list">
+            <li><strong>left: 100</strong><br />距離邏輯畫布左邊 100。</li>
+            <li><strong>top: 50</strong><br />距離邏輯畫布上方 50。</li>
+            <li><strong>width: 200</strong><br />邏輯寬度是 200。</li>
+            <li><strong>height: 80</strong><br />邏輯高度是 80。</li>
+          </ul>
+        </article>
+
+        <article class="panel stage">
+          <div class="viewport">
+            <div class="axis">邏輯畫布：1000 x 562.5</div>
+            <div
+              class="box"
+              style="left: 100px; top: 50px; width: 200px; height: 80px;"
+            >
+              <span class="tag">logic box</span>
+              <h3>文字框</h3>
+              <p>它站在邏輯座標 (100, 50)，尺寸是 200 x 80。</p>
+            </div>
+          </div>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>

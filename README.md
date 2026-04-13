@@ -50,6 +50,20 @@
 - `PPTist-SourceCode/doc/DirectoryAndData.md`
 - `PPTist-SourceCode/doc/Canvas.md`
 
+## 目前進度
+
+- 已完成：整理 `note/` 結構，建立 `pptist / web-basics / libraries` 三條主軸
+- 已完成：啟動 `PPTist-SourceCode` 開發伺服器，確認本機可跑
+- 已完成：補 `PPTist` 畫布系統入門筆記與畫布章節導航
+- 正在進行：理解 `PPTist` 畫布系統，特別是固定邏輯座標、`canvasScale` 與事件座標回寫
+- 目前卡點：對「資料座標」和「螢幕顯示座標」之間的映射還不夠直覺
+
+## 下一步
+
+1. 用實際畫面對照 `Canvas/index.vue` 與 `useViewportSize.ts`
+2. 追 `PPTist` 的滑鼠框選、雙擊新增文字、旋轉如何把螢幕座標換回邏輯座標
+3. 接著學縮圖系統，驗證同一套邏輯如何重用到縮圖
+
 ## 使用方式
 
 - 想看真實專案實作：進 `PPTist-SourceCode/`

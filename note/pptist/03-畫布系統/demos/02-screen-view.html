@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Demo 02 - 畫面怎麼看</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #e9f1ec;
+        --card: rgba(255, 255, 255, 0.9);
+        --line: rgba(41, 71, 54, 0.16);
+        --text: #1d3428;
+        --muted: #52665c;
+        --accent: #2d8b62;
+        --accent-soft: rgba(45, 139, 98, 0.16);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Segoe UI", sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top right, rgba(45, 139, 98, 0.18), transparent 36%),
+          linear-gradient(135deg, #f7fbf8, var(--bg));
+      }
+
+      main {
+        width: min(1180px, calc(100vw - 32px));
+        margin: 0 auto;
+        padding: 32px 0 40px;
+      }
+
+      h1,
+      h2,
+      p {
+        margin: 0;
+      }
+
+      .hero,
+      .panel {
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        background: var(--card);
+        backdrop-filter: blur(18px);
+        box-shadow: 0 20px 60px rgba(29, 52, 40, 0.08);
+      }
+
+      .hero {
+        padding: 28px;
+        margin-bottom: 24px;
+      }
+
+      .hero p {
+        margin-top: 12px;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 320px minmax(0, 1fr);
+        gap: 24px;
+      }
+
+      .panel {
+        padding: 20px;
+      }
+
+      .controls {
+        display: grid;
+        gap: 16px;
+      }
+
+      .controls label {
+        display: grid;
+        gap: 8px;
+        font-weight: 700;
+      }
+
+      input[type="range"] {
+        width: 100%;
+      }
+
+      .stat {
+        padding: 14px 16px;
+        border-radius: 18px;
+        background: rgba(45, 139, 98, 0.08);
+      }
+
+      .stat strong {
+        display: block;
+        margin-bottom: 6px;
+      }
+
+      .stat span {
+        display: block;
+        line-height: 1.7;
+        white-space: pre-line;
+      }
+
+      .code {
+        padding: 16px;
+        border-radius: 16px;
+        background: #16261d;
+        color: #edf5f0;
+        font-family: Consolas, monospace;
+        line-height: 1.7;
+        white-space: pre-wrap;
+      }
+
+      .stage {
+        display: grid;
+        gap: 24px;
+      }
+
+      .frame-card {
+        padding: 20px;
+        border-radius: 20px;
+        border: 1px solid rgba(41, 71, 54, 0.12);
+        background: linear-gradient(180deg, rgba(45, 139, 98, 0.08), rgba(255, 255, 255, 0.92));
+      }
+
+      .frame-card h2 {
+        font-size: 18px;
+      }
+
+      .frame-card p {
+        margin-top: 8px;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      .frame {
+        position: relative;
+        margin-top: 16px;
+        overflow: hidden;
+        border-radius: 16px;
+        border: 2px solid rgba(29, 52, 40, 0.18);
+        background:
+          linear-gradient(rgba(29, 52, 40, 0.05) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(29, 52, 40, 0.05) 1px, transparent 1px),
+          #f8fcfa;
+        background-size: 40px 40px;
+      }
+
+      .viewport {
+        position: relative;
+        width: 1000px;
+        height: 562.5px;
+        transform-origin: 0 0;
+        background: rgba(255, 255, 255, 0.78);
+      }
+
+      .box {
+        position: absolute;
+        border-radius: 18px;
+        border: 2px solid var(--accent);
+        background: linear-gradient(180deg, rgba(45, 139, 98, 0.22), rgba(255, 255, 255, 0.92));
+        padding: 14px 16px;
+      }
+
+      .box h3,
+      .box p {
+        margin: 0;
+      }
+
+      .box p {
+        margin-top: 6px;
+        color: #406451;
+      }
+
+      .compare {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .badge {
+        display: inline-flex;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: var(--accent-soft);
+        color: var(--accent);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      @media (max-width: 960px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+
+        .compare {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero">
+        <h1>例子 2：畫面怎麼看</h1>
+        <p>
+          這個 demo 用同一筆元素資料，同時顯示「邏輯尺寸」與「縮放後的實際畫面」。
+          你拖動 `canvasScale`，就能直接看到資料不變，但畫面大小會跟著縮放。
+        </p>
+      </section>
+
+      <section class="layout">
+        <article class="panel controls">
+          <label for="scale">
+            canvasScale
+            <input id="scale" type="range" min="0.3" max="1.2" step="0.1" value="0.5" />
+          </label>
+          <div class="stat">
+            <strong>目前倍率</strong>
+            <span id="scale-value">0.5</span>
+          </div>
+          <div class="stat">
+            <strong>畫面上看起來的元素尺寸</strong>
+            <span id="screen-size">left 50, top 25, width 100, height 40</span>
+          </div>
+          <div class="code" id="code-block"></div>
+        </article>
+
+        <article class="panel stage">
+          <div class="compare">
+            <section class="frame-card">
+              <span class="badge">固定資料</span>
+              <h2>邏輯畫布</h2>
+              <p>這一側永遠維持 `1000 x 562.5`，元素資料不會跟著縮放改寫。</p>
+              <div class="frame" style="width: 100%; aspect-ratio: 16 / 9;">
+                <div class="viewport" style="transform: scale(0.4);">
+                  <div class="box" style="left: 100px; top: 50px; width: 200px; height: 80px;">
+                    <h3>文字框</h3>
+                    <p>left 100 / top 50 / 200 x 80</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section class="frame-card">
+              <span class="badge">實際畫面</span>
+              <h2>縮放後的畫面</h2>
+              <p>這一側才是使用者真正看到的大小，會跟 `canvasScale` 一起變。</p>
+              <div class="frame" id="screen-frame">
+                <div class="viewport" id="screen-viewport">
+                  <div class="box" id="screen-box" style="left: 100px; top: 50px; width: 200px; height: 80px;">
+                    <h3>文字框</h3>
+                    <p id="screen-label"></p>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </article>
+      </section>
+    </main>
+
+    <script>
+      const logicalElement = {
+        left: 100,
+        top: 50,
+        width: 200,
+        height: 80,
+      }
+
+      const scaleInput = document.querySelector("#scale")
+      const scaleValue = document.querySelector("#scale-value")
+      const screenSize = document.querySelector("#screen-size")
+      const codeBlock = document.querySelector("#code-block")
+      const screenFrame = document.querySelector("#screen-frame")
+      const screenViewport = document.querySelector("#screen-viewport")
+      const screenLabel = document.querySelector("#screen-label")
+      const formatNumber = (value) => Number.isInteger(value) ? value : value.toFixed(1)
+
+      const render = () => {
+        const scale = Number(scaleInput.value)
+        const screenLeft = logicalElement.left * scale
+        const screenTop = logicalElement.top * scale
+        const screenWidth = logicalElement.width * scale
+        const screenHeight = logicalElement.height * scale
+
+        scaleValue.textContent = scale.toFixed(1)
+        screenSize.textContent = `left: ${formatNumber(screenLeft)} px
+top: ${formatNumber(screenTop)} px
+width: ${formatNumber(screenWidth)} px
+height: ${formatNumber(screenHeight)} px`
+        screenLabel.textContent =
+          `畫面上會顯示為 left ${formatNumber(screenLeft)} px、top ${formatNumber(screenTop)} px，尺寸 ${formatNumber(screenWidth)} x ${formatNumber(screenHeight)} px。`
+        codeBlock.textContent = `const element = {
+  left: ${logicalElement.left},
+  top: ${logicalElement.top},
+  width: ${logicalElement.width},
+  height: ${logicalElement.height},
+}
+
+const canvasScale = ${scale.toFixed(1)}
+
+const screen = {
+  left: element.left * canvasScale,
+  top: element.top * canvasScale,
+  width: element.width * canvasScale,
+  height: element.height * canvasScale,
+}`
+
+        screenFrame.style.width = `${1000 * scale}px`
+        screenFrame.style.height = `${562.5 * scale}px`
+        screenViewport.style.transform = `scale(${scale})`
+      }
+
+      scaleInput.addEventListener("input", render)
+      render()
+    </script>
+  </body>
+</html>

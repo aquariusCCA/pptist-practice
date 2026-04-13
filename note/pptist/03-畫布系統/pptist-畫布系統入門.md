@@ -28,6 +28,301 @@
 - 實際畫面只是在外層決定顯示多大，內層內容再用 `scale()` 放大或縮小。
 - 滑鼠與拖曳的位移要回到邏輯世界時，核心公式就是：`邏輯位移 = 螢幕位移 / canvasScale`。
 
+## 先用最簡單的方式理解
+
+先不要想元件、hooks 或 store，先只看這條流程：
+
+```text
+元素資料
+  -> 放進固定大小的虛擬投影片
+  -> 再把整張投影片縮放到螢幕上
+  -> 使用者點擊螢幕
+  -> 程式把點擊位置換回虛擬投影片座標
+```
+
+你可以把它想成下面這個模型：
+
+- `PPTist` 心中永遠有一張固定大小的投影片
+- 這張投影片預設是 `1000 x 562.5`
+- 元素資料永遠記在這張投影片裡
+- 螢幕上看到的大或小，只是這張投影片被整體縮放後的結果
+
+### 例子 1：資料怎麼看
+
+如果有一個文字框資料是：
+
+```ts
+{ left: 100, top: 50, width: 200, height: 80 }
+```
+
+它的意思是：
+
+- 這個文字框在投影片世界裡，距離左上角 `100`
+- 距離上方 `50`
+- 寬 `200`
+- 高 `80`
+
+它不是在說「目前螢幕上剛好就是 200px 寬」。
+
+對照 demo：
+
+- [Demo 01：資料怎麼看](./demos/01-data-view.html)
+
+### 例子 2：畫面怎麼看
+
+如果現在 `canvasScale = 0.5`，那這張投影片會整體縮成一半。
+
+所以你看到的會變成：
+
+- 左邊距離看起來像 `50px`
+- 上邊距離看起來像 `25px`
+- 寬看起來像 `100px`
+- 高看起來像 `40px`
+
+但資料本身完全沒變，還是：
+
+```ts
+{ left: 100, top: 50, width: 200, height: 80 }
+```
+
+對照 demo：
+
+- [Demo 02：畫面怎麼看](./demos/02-screen-view.html)
+
+### 例子 3：滑鼠為什麼要除以 `canvasScale`
+
+如果你在螢幕上點到距離左上角 `50px` 的地方，而現在 `canvasScale = 0.5`：
+
+```ts
+投影片世界的位置 = 50 / 0.5 = 100
+```
+
+也就是說：
+
+- 螢幕上看到的 `50`
+- 實際對應投影片世界裡的 `100`
+
+這就是 `PPTist` 裡大量出現 `/ canvasScale` 的原因。
+
+對照 demo：
+
+- [Demo 03：滑鼠為什麼要除以 canvasScale](./demos/03-mouse-scale.html)
+
+## 你現在只要先記住這一句
+
+`PPTist` 先用固定座標描述投影片，再把整張投影片縮放到畫面上；所有滑鼠操作最後都要換算回那個固定座標系。
+
+## 最小範例程式碼
+
+下面這組範例不是 `PPTist` 原始碼，只是把畫布系統縮成最小可理解版本。
+
+如果你想先直接操作，再回來看下面的程式碼，可以先打開：
+
+- [Demo 01：資料怎麼看](./demos/01-data-view.html)
+- [Demo 02：畫面怎麼看](./demos/02-screen-view.html)
+- [Demo 03：滑鼠為什麼要除以 canvasScale](./demos/03-mouse-scale.html)
+
+## 範例 1：先定義固定的邏輯畫布與元素資料
+
+先不要碰 DOM，先只看資料長什麼樣：
+
+```ts
+type ElementBox = {
+  left: number
+  top: number
+  width: number
+  height: number
+  text: string
+}
+
+const viewportSize = 1000
+const viewportRatio = 9 / 16
+
+const slide = {
+  width: viewportSize,
+  height: viewportSize * viewportRatio,
+  elements: [
+    { left: 100, top: 50, width: 220, height: 80, text: '標題' },
+    { left: 360, top: 180, width: 260, height: 120, text: '內容區塊' },
+  ] satisfies ElementBox[],
+}
+```
+
+這段資料的重點是：
+
+- 投影片世界固定是 `1000 x 562.5`
+- 元素永遠記在這個世界裡
+- 不管畫面實際顯示多大，資料都不變
+
+## 範例 2：把邏輯畫布縮放後顯示到畫面
+
+假設你想把邏輯寬度 `1000` 的投影片，顯示成畫面上的 `600px` 寬：
+
+```ts
+const logicalWidth = 1000
+const actualWidth = 600
+const scale = actualWidth / logicalWidth // 0.6
+```
+
+對應的最小 HTML：
+
+```html
+<div class="frame">
+  <div class="viewport" id="viewport">
+    <div class="box title">標題</div>
+    <div class="box content">內容區塊</div>
+  </div>
+</div>
+```
+
+對應的最小 CSS：
+
+```css
+.frame {
+  width: 600px;
+  height: 337.5px; /* 600 * 9 / 16 */
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #999;
+}
+
+.viewport {
+  width: 1000px;
+  height: 562.5px;
+  position: relative;
+  transform: scale(0.6);
+  transform-origin: 0 0;
+}
+
+.box {
+  position: absolute;
+  border: 1px solid #333;
+  background: #f5f5f5;
+}
+
+.title {
+  left: 100px;
+  top: 50px;
+  width: 220px;
+  height: 80px;
+}
+
+.content {
+  left: 360px;
+  top: 180px;
+  width: 260px;
+  height: 120px;
+}
+```
+
+這裡最重要的是：
+
+- `.frame` 是螢幕上的實際顯示大小
+- `.viewport` 是固定的邏輯畫布
+- 真正縮放的是 `.viewport`
+- 元素仍然寫自己的邏輯座標，不用改成 `60px`、`30px`
+
+## 範例 3：用程式產生元素，而不是手寫 CSS
+
+上面的元素位置如果改成根據資料渲染，會更接近真實專案思路：
+
+```ts
+const viewport = document.querySelector('#viewport') as HTMLDivElement
+
+slide.elements.forEach(element => {
+  const node = document.createElement('div')
+  node.className = 'box'
+  node.textContent = element.text
+
+  node.style.left = `${element.left}px`
+  node.style.top = `${element.top}px`
+  node.style.width = `${element.width}px`
+  node.style.height = `${element.height}px`
+
+  viewport.appendChild(node)
+})
+```
+
+這段最重要的觀察是：
+
+- 你直接渲染的是邏輯座標
+- 元素自己完全不知道現在畫面是不是縮成 `0.6`
+- 變小這件事是外層 `viewport` 幫它做的
+
+## 範例 4：把滑鼠點擊位置換回邏輯座標
+
+現在假設畫面上這張投影片縮成 `0.6` 倍。  
+你在螢幕上點到距離左邊 `60px`、距離上方 `30px` 的位置。
+
+要把這個位置換回投影片世界，就要除以縮放比：
+
+```ts
+const scale = 0.6
+
+const screenX = 60
+const screenY = 30
+
+const worldX = screenX / scale // 100
+const worldY = screenY / scale // 50
+```
+
+如果要接到 DOM 事件，大致會寫成：
+
+```ts
+const frame = document.querySelector('.frame') as HTMLDivElement
+
+frame.addEventListener('click', (event) => {
+  const rect = frame.getBoundingClientRect()
+  const screenX = event.clientX - rect.left
+  const screenY = event.clientY - rect.top
+
+  const worldX = screenX / scale
+  const worldY = screenY / scale
+
+  console.log({ worldX, worldY })
+})
+```
+
+這就是為什麼畫布系統裡一直會出現：
+
+```ts
+world = screen / scale
+```
+
+## 範例 5：新增元素時，資料應該記哪個座標
+
+假設你點擊畫面上的 `(240, 120)`，而現在縮放比是 `0.6`：
+
+```ts
+const scale = 0.6
+
+const newElement = {
+  left: 240 / scale,   // 400
+  top: 120 / scale,    // 200
+  width: 200,
+  height: 60,
+  text: '新文字框',
+}
+```
+
+注意新增進資料時，應該存：
+
+```ts
+left: 400
+top: 200
+```
+
+而不是存目前螢幕上的 `240`、`120`。  
+因為資料要對應的是投影片世界，不是當下這個縮放過的畫面。
+
+## 一句話總結這組範例
+
+- 資料：永遠使用固定邏輯座標
+- 顯示：整張投影片一起縮放
+- 互動：先拿到螢幕座標，再換回邏輯座標
+
+如果你先把這組範例看懂，再回頭讀 `PPTist`，會比較容易知道它是在把這件事做大、做完整，而不是在做另一套不同邏輯。
+
 ## 一張圖先看懂
 
 ```text
@@ -87,9 +382,6 @@ height = 1000 * 0.5625 = 562.5
 
 它永遠是在 `1000 x 562.5` 這個世界裡成立，不會因為畫面目前顯示成 800px 寬或 1400px 寬就改變定義。
 
-延伸閱讀：
-
-- [ppt-畫布的邏輯座標](./ppt-畫布的邏輯座標.md)
 
 ## 3. 實際畫面怎麼決定大小：`viewport-wrapper`
 
@@ -271,6 +563,4 @@ const mouseY = (currentPageY - viewportRect.top) / canvasScale.value
 
 讀完這篇後，建議接著看：
 
-1. [ppt-畫布的邏輯座標](./ppt-畫布的邏輯座標.md)
-2. [縮圖元件設計筆記](../04-縮圖系統/縮圖元件設計筆記.md)
-
+1. [縮圖元件設計筆記](../04-縮圖系統/縮圖元件設計筆記.md)
