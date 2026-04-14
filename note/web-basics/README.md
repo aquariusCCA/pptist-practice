@@ -12,9 +12,9 @@
 
 - [JavaScript](./javascript/README.md)
 - [TypeScript](./typescript/README.md)
+- [Vue](./vue/README.md)
 - [Vite](./vite/README.md)
 
 ## 返回上層
 
 - [回到 note 根目錄](../README.md)
-
