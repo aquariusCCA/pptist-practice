@@ -355,12 +355,12 @@ top: 200
 
 對應程式位置：
 
-- [slides.ts](/C:/Users/wtlc/Documents/pptist-practice/PPTist-SourceCode/src/store/slides.ts:1)
-- [Canvas.md](/C:/Users/wtlc/Documents/pptist-practice/PPTist-SourceCode/doc/Canvas.md:1)
+- [slides.ts](../../../PPTist-SourceCode/src/store/slides.ts)
+- [Canvas.md](../../../PPTist-SourceCode/doc/Canvas.md)
 
 ## 2. 邏輯畫布的來源：`viewportSize` 與 `viewportRatio`
 
-在 [slides.ts](/C:/Users/wtlc/Documents/pptist-practice/PPTist-SourceCode/src/store/slides.ts:54) 裡，預設值是：
+在 [slides.ts](../../../PPTist-SourceCode/src/store/slides.ts) 第 54 行附近，預設值是：
 
 ```ts
 viewportSize: 1000
@@ -392,7 +392,7 @@ height = 1000 * 0.5625 = 562.5
 
 真正顯示在畫面上的尺寸，不是直接改 `viewportSize`，而是由 `Canvas` 外層決定。
 
-在 [Canvas/index.vue](/C:/Users/wtlc/Documents/pptist-practice/PPTist-SourceCode/src/views/Editor/Canvas/index.vue:18) 裡：
+在 [Canvas/index.vue](../../../PPTist-SourceCode/src/views/Editor/Canvas/index.vue) 第 18 行附近：
 
 ```vue
 <div
@@ -415,7 +415,7 @@ height = 1000 * 0.5625 = 562.5
 
 ## 4. 內容怎麼被放大或縮小：`viewport`
 
-同一個檔案裡，真正裝元素的內層是 [viewport](/C:/Users/wtlc/Documents/pptist-practice/PPTist-SourceCode/src/views/Editor/Canvas/index.vue:62)：
+同一個檔案裡，真正裝元素的內層是 [viewport](../../../PPTist-SourceCode/src/views/Editor/Canvas/index.vue) 第 62 行附近：
 
 ```vue
 <div
@@ -434,7 +434,7 @@ height = 1000 * 0.5625 = 562.5
 
 ## 5. `canvasScale` 怎麼算出來
 
-`canvasScale` 存在 [main.ts](/C:/Users/wtlc/Documents/pptist-practice/PPTist-SourceCode/src/store/main.ts:40) 的全域 store 裡，它不是固定值，而是由 [useViewportSize.ts](/C:/Users/wtlc/Documents/pptist-practice/PPTist-SourceCode/src/views/Editor/Canvas/hooks/useViewportSize.ts:1) 根據容器大小即時計算。
+`canvasScale` 存在 [main.ts](../../../PPTist-SourceCode/src/store/main.ts) 第 53 行附近的全域 store 裡，它不是固定值，而是由 [useViewportSize.ts](../../../PPTist-SourceCode/src/views/Editor/Canvas/hooks/useViewportSize.ts) 根據容器大小即時計算。
 
 它的核心邏輯是：
 
@@ -461,7 +461,7 @@ canvasScale = viewportActualHeight / (viewportSize * viewportRatio)
 
 元素元件本身幾乎都直接用資料上的 `left/top/width/height`。
 
-例如文字元素 [TextElement/index.vue](/C:/Users/wtlc/Documents/pptist-practice/PPTist-SourceCode/src/views/components/element/TextElement/index.vue:4)：
+例如文字元素 [TextElement/index.vue](../../../PPTist-SourceCode/src/views/components/element/TextElement/index.vue) 第 4 行附近：
 
 ```vue
 :style="{
@@ -485,14 +485,14 @@ canvasScale = viewportActualHeight / (viewportSize * viewportRatio)
 
 畫面上的滑鼠事件是「螢幕座標」，但元素資料要寫回「邏輯座標」，所以中間一定要做轉換。
 
-在 [Canvas/index.vue](/C:/Users/wtlc/Documents/pptist-practice/PPTist-SourceCode/src/views/Editor/Canvas/index.vue:221) 裡，雙擊空白新增文字：
+在 [Canvas/index.vue](../../../PPTist-SourceCode/src/views/Editor/Canvas/index.vue) 第 221 行附近，雙擊空白新增文字：
 
 ```ts
 const left = (e.pageX - viewportRect.x) / canvasScale.value
 const top = (e.pageY - viewportRect.y) / canvasScale.value
 ```
 
-在 [useMouseSelection.ts](/C:/Users/wtlc/Documents/pptist-practice/PPTist-SourceCode/src/views/Editor/Canvas/hooks/useMouseSelection.ts:24) 裡，滑鼠框選也一樣：
+在 [useMouseSelection.ts](../../../PPTist-SourceCode/src/views/Editor/Canvas/hooks/useMouseSelection.ts) 第 24 行附近，滑鼠框選也一樣：
 
 ```ts
 const left = (startPageX - viewportRect.x) / canvasScale.value
@@ -501,7 +501,7 @@ const offsetWidth = (currentPageX - startPageX) / canvasScale.value
 const offsetHeight = (currentPageY - startPageY) / canvasScale.value
 ```
 
-在 [useRotateElement.ts](/C:/Users/wtlc/Documents/pptist-practice/PPTist-SourceCode/src/views/Editor/Canvas/hooks/useRotateElement.ts:45) 裡，旋轉也先把滑鼠點換回邏輯座標：
+在 [useRotateElement.ts](../../../PPTist-SourceCode/src/views/Editor/Canvas/hooks/useRotateElement.ts) 第 54 行附近，旋轉也先把滑鼠點換回邏輯座標：
 
 ```ts
 const mouseX = (currentPageX - viewportRect.left) / canvasScale.value
@@ -516,7 +516,7 @@ const mouseY = (currentPageY - viewportRect.top) / canvasScale.value
 
 ## 8. 為什麼縮圖可以沿用同一套模型
 
-縮圖元件 [ThumbnailSlide/index.vue](/C:/Users/wtlc/Documents/pptist-practice/PPTist-SourceCode/src/views/components/ThumbnailSlide/index.vue:1) 跟主畫布是同一個想法：
+縮圖元件 [ThumbnailSlide/index.vue](../../../PPTist-SourceCode/src/views/components/ThumbnailSlide/index.vue) 跟主畫布是同一個想法：
 
 - 外層 `.thumbnail-slide` 決定縮圖實際大小
 - 內層 `.elements` 維持 `viewportSize x viewportSize * viewportRatio`
