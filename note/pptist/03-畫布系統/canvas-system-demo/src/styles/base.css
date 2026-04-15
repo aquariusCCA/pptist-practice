@@ -1,0 +1,63 @@
+@import './tokens.css';
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+html {
+  color-scheme: light;
+  background:
+    radial-gradient(circle at top left, rgba(108, 130, 255, 0.34), transparent 28%),
+    radial-gradient(circle at top right, rgba(52, 71, 230, 0.18), transparent 25%),
+    linear-gradient(180deg, var(--bg) 0%, var(--bg-deep) 100%);
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  font-family:
+    'Aptos',
+    'Segoe UI',
+    sans-serif;
+  color: var(--text-primary);
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.75), transparent 35%),
+    linear-gradient(180deg, var(--bg) 0%, var(--bg-deep) 100%);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  color: inherit;
+}
+
+h1,
+h2,
+h3 {
+  font-family:
+    'Georgia',
+    'Times New Roman',
+    serif;
+  letter-spacing: -0.03em;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+a {
+  color: inherit;
+}

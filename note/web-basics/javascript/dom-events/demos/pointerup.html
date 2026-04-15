@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>pointerup demo</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 24px; }
+    #stage {
+      width: 360px;
+      height: 180px;
+      display: grid;
+      place-items: center;
+      border: 2px solid #9333ea;
+      border-radius: 16px;
+      background: #faf5ff;
+      touch-action: none;
+      user-select: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>pointerup demo</h1>
+  <div id="stage">按下後放開</div>
+  <pre id="log">尚未完成一段互動</pre>
+
+  <script>
+    const stage = document.getElementById('stage')
+    const log = document.getElementById('log')
+    let pointerId = null
+
+    stage.addEventListener('pointerdown', (event) => {
+      pointerId = event.pointerId
+      stage.setPointerCapture(pointerId)
+      log.textContent = '按下了，等待 pointerup'
+    })
+
+    stage.addEventListener('pointerup', (event) => {
+      if (event.pointerId !== pointerId) return
+      stage.releasePointerCapture(pointerId)
+      pointerId = null
+      log.textContent = 'pointerup：互動正常結束'
+    })
+  </script>
+</body>
+</html>
+

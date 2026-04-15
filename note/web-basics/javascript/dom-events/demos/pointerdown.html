@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>pointerdown demo</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 24px; }
+    #pad {
+      width: 320px;
+      height: 180px;
+      display: grid;
+      place-items: center;
+      border: 2px solid #4f46e5;
+      border-radius: 16px;
+      background: #eef2ff;
+      user-select: none;
+      touch-action: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>pointerdown demo</h1>
+  <div id="pad">按下我，觀察 pointerdown</div>
+  <pre id="log">等待輸入...</pre>
+
+  <script>
+    const pad = document.getElementById('pad')
+    const log = document.getElementById('log')
+
+    pad.addEventListener('pointerdown', (event) => {
+      log.textContent = [
+        'pointerdown',
+        `pointerType: ${event.pointerType}`,
+        `pointerId: ${event.pointerId}`,
+        `button: ${event.button}`,
+        `clientX: ${event.clientX}`,
+        `clientY: ${event.clientY}`,
+      ].join('\n')
+
+      if (event.button === 0) {
+        pad.setPointerCapture(event.pointerId)
+      }
+    })
+  </script>
+</body>
+</html>
+

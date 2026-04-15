@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>wheel demo</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 24px; }
+    #stage {
+      width: 420px;
+      height: 240px;
+      display: grid;
+      place-items: center;
+      border: 2px solid #2563eb;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #eff6ff, #dbeafe);
+      touch-action: none;
+      user-select: none;
+    }
+    #content {
+      font-size: 32px;
+      font-weight: 700;
+      transform-origin: center center;
+    }
+  </style>
+</head>
+<body>
+  <h1>wheel demo</h1>
+  <div id="stage">
+    <div id="content">Zoom me</div>
+  </div>
+  <pre id="log">滾輪縮放</pre>
+
+  <script>
+    const stage = document.getElementById('stage')
+    const content = document.getElementById('content')
+    const log = document.getElementById('log')
+    let zoom = 1
+
+    stage.addEventListener('wheel', (event) => {
+      event.preventDefault()
+
+      const delta = event.deltaY < 0 ? 1.08 : 0.92
+      zoom = Math.min(Math.max(zoom * delta, 0.4), 2.4)
+      content.style.transform = `scale(${zoom})`
+      log.textContent = `deltaY: ${Math.round(event.deltaY)}\nzoom: ${zoom.toFixed(2)}`
+    }, { passive: false })
+  </script>
+</body>
+</html>
+

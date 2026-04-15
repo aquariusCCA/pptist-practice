@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>pointermove demo</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 24px; }
+    #stage {
+      width: 420px;
+      height: 220px;
+      position: relative;
+      border: 2px solid #0f766e;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #ecfeff, #f0fdfa);
+      touch-action: none;
+      user-select: none;
+      overflow: hidden;
+    }
+    #dot {
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      background: #0f766e;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>pointermove demo</h1>
+  <div id="stage">
+    <div id="dot" style="left: 50%; top: 50%;"></div>
+  </div>
+  <pre id="log">按住並移動滑鼠或手指</pre>
+
+  <script>
+    const stage = document.getElementById('stage')
+    const dot = document.getElementById('dot')
+    const log = document.getElementById('log')
+    const dragState = { active: false, pointerId: null }
+
+    stage.addEventListener('pointerdown', (event) => {
+      dragState.active = true
+      dragState.pointerId = event.pointerId
+      stage.setPointerCapture(event.pointerId)
+    })
+
+    stage.addEventListener('pointermove', (event) => {
+      if (!dragState.active || dragState.pointerId !== event.pointerId) return
+
+      const rect = stage.getBoundingClientRect()
+      const x = event.clientX - rect.left
+      const y = event.clientY - rect.top
+      dot.style.left = `${x}px`
+      dot.style.top = `${y}px`
+      log.textContent = `pointermove\nx: ${Math.round(x)}\ny: ${Math.round(y)}`
+    })
+  </script>
+</body>
+</html>
+

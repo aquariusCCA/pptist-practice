@@ -1,17 +1,20 @@
 # JavaScript
 
-本章放 JavaScript 基礎機制與 DOM 事件模型相關筆記。
+這一區整理 JavaScript 與 DOM 事件的基礎筆記，重點放在實際會用到的互動模式。
 
-## 本章所有小節
+## 主題索引
 
 - [composed-path](./composed-path.md)
+- [getBoundingClientRect()](./getBoundingClientRect.md)
+- [DOM Events](./dom-events/README.md)
 
-## 建議回查情境
+## 學習重點
 
-- 當你在看事件冒泡、事件委派或 shadow DOM 時
-- 當你想確認事件實際經過哪些節點時
+- 事件傳遞與事件路徑
+- 原生 Pointer Events 的拖曳流程
+- `wheel` 事件的縮放與預設行為控制
+- 在 Vue 畫布元件中如何把原生事件接成狀態更新
 
-## 返回上層
+## 相關筆記
 
-- [回到 Web Basics](../README.md)
-
+- [Web Basics](../README.md)
