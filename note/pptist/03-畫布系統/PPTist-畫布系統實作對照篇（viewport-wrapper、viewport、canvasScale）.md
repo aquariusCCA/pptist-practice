@@ -132,6 +132,11 @@ width = height / viewportRatio
 3. 用 `canvasPercentage` 決定這張投影片要占容器的幾成
 4. 最後算出 `canvasScale`
 
+這裡要分清楚兩件事：
+
+- `canvasPercentage` 是控制值，描述畫布想占容器多少比例
+- `canvasScale` 是結果值，描述邏輯畫布最後要縮放多少倍
+
 這裡不要把 `viewportSize = 1000` 理解成顯示上限。  
 `1000` 只是邏輯畫布的基準寬度，真正要判斷的是：
 
@@ -149,6 +154,8 @@ canvasScale = viewportActualWidth / viewportSize
 ```ts
 canvasScale = viewportActualHeight / (viewportSize * viewportRatio)
 ```
+
+所以更精準地說，`canvasScale` 不是直接從 `canvasPercentage` 得來，而是先由 `canvasPercentage` 算出實際可視寬或高，再推回縮放倍率。
 
 對照 [useViewportSize.ts](../../../PPTist-SourceCode/src/views/Editor/Canvas/hooks/useViewportSize.ts)：
 
