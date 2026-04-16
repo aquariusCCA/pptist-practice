@@ -114,9 +114,6 @@ function handleWheel(event: WheelEvent) {
     x: event.clientX - stageRect.left,
     y: event.clientY - stageRect.top,
   }
-  console.log('event: ',event.clientX, ', ', event.clientY)
-  console.log('stageRect: ', stageRect.left, ', ', stageRect.top)
-  console.log('anchor: ', anchor)
   const nextPan = zoomAroundPoint(
     { x: props.panX, y: props.panY },
     props.zoom,
