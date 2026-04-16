@@ -126,7 +126,7 @@ element.setPointerCapture(event.pointerId)
 
 如果你想進一步理解這個機制，可以接著看補充筆記：
 
-* [setPointerCapture()](./setPointerCapture.md)
+* [setPointerCapture() 與 releasePointerCapture()](./setPointerCapture 與 releasePointerCapture.md)
 
 ## 一句話總結
 

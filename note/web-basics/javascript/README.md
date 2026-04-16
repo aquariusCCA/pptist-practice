@@ -7,6 +7,7 @@
 - [composed-path](./composed-path.md)
 - [getBoundingClientRect()](./getBoundingClientRect.md)
 - [DOM Events](./dom-events/README.md)
+- [setPointerCapture() 與 releasePointerCapture()](./dom-events/setPointerCapture 與 releasePointerCapture.md)
 
 ## 學習重點
 

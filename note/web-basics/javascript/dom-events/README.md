@@ -12,8 +12,7 @@
 
 ## 補充筆記
 
-- [setPointerCapture()](./setPointerCapture.md)
-- [releasePointerCapture()](./releasePointerCapture.md)
+- [setPointerCapture() 與 releasePointerCapture()](./setPointerCapture 與 releasePointerCapture.md)
 
 ## 範例索引
 
@@ -35,4 +34,3 @@
 - 用滑鼠滾輪縮放
 
 這些事件不是孤立知識，而是畫布互動的核心。
-
