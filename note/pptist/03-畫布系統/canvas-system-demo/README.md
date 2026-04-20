@@ -119,11 +119,10 @@ npm run build
 
 ## 延伸閱讀
 
-- [canvas-system-demo 設計說明](./docs/design-overview.md)
-- [資料流對照：props / emit 與 Pinia 版本](./docs/data-flow-comparison.md)
-- [概念篇 vs demo：`screenFrame` 與 `screenViewport`](./docs/frame-vs-demo.md)
 - [Fit 倍率計算：`calculateFitZoom()`](./docs/canvas-system-demo-calculateFitZoom.md)
 - [滾輪縮放設計：`handleWheel()`](./docs/canvas-system-demo-handleWheel.md)
+- [以滑鼠為中心縮放：`zoomAroundPoint()`](./docs/canvas-system-demo-zoomAroundPoint.md)
+- [按鈕縮放步進：`zoomBy()`](./docs/canvas-system-demo-zoomBy.md)
 
 ## 對照原筆記
 
