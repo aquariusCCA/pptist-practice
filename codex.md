@@ -1,0 +1,1261 @@
+# PPTist 畫布系統實作對照篇（9.5 分版）
+
+所屬章節：[03-畫布系統](./README.md)
+
+---
+
+## 這篇在做什麼
+
+這篇不是再重講一次畫布理論，
+而是把你前一篇已經建立好的觀念，直接對回 **PPTist 目前原始碼** 的實作位置。
+
+這一版會刻意做到兩件事：
+
+1. **先講原理，再講 Source**
+2. **把「作者文件本來就在講的概念」和「我根據目前實作做出的結構解讀」分開**
+
+這樣你之後讀 `slides.ts`、`main.ts`、`useScaleCanvas.ts`、`useViewportSize.ts`、`Canvas/index.vue`，
+比較不會把：
+
+* 官方文件的概念模型
+* 目前 Vue 結構的落地方式
+* 我們自己整理出的抽象語言
+
+混成同一層。
+
+---
+
+## 先說清楚：這篇會對照哪些 Source
+
+這篇主要會對照下面幾個位置：
+
+```text
+doc/Canvas.md
+src/store/slides.ts
+src/store/main.ts
+src/hooks/useScaleCanvas.ts
+src/views/Editor/Canvas/hooks/useViewportSize.ts
+src/views/Editor/Canvas/index.vue
+src/views/components/element/TextElement/index.vue
+```
+
+你可以先把它們理解成這樣：
+
+* `doc/Canvas.md`：作者先講「畫布與元素」的基本原理
+* `slides.ts`：定義邏輯畫布基準
+* `main.ts`：保存畫布縮放與拖曳狀態
+* `useScaleCanvas.ts`：處理使用者對縮放的操作
+* `useViewportSize.ts`：根據容器大小計算目前畫布要顯示成多大、放在哪裡
+* `Canvas/index.vue`：把畫布 DOM 結構真正渲染出來，並接住滑鼠互動
+* `TextElement/index.vue`：可拿來驗證「元素其實一直在用邏輯座標渲染」
+
+---
+
+## 閱讀提醒：這篇的兩種說法要分開
+
+這篇會同時出現兩種說法，你要刻意區分：
+
+### 1. 作者文件的概念說法
+例如 `doc/Canvas.md` 裡講的：
+
+* 可視區域
+* 畫布工具
+* 1000 × 562.5 的基準比例
+* 元素資料活在固定座標系裡
+
+這是**概念模型**。
+
+---
+
+### 2. 目前實作的結構說法
+例如 `Canvas/index.vue` 裡的：
+
+* `viewport-wrapper`
+* `operates`
+* `viewport`
+* `canvasScale`
+* `viewportStyles`
+
+這是**目前 master 分支的 Vue / DOM / CSS 落地方式**。
+
+---
+
+### 這兩者不是完全一一對字
+例如：
+
+* `doc/Canvas.md` 沒有直接講 `viewport-wrapper` 這個名字
+* 但目前 `Canvas/index.vue` 的確長成 wrapper + operates + viewport 這種結構
+
+所以你後面看到我說：
+
+> `viewport-wrapper` 是畫面上的外框
+> `viewport` 是縮放的內容層
+
+這是我根據**目前實作**整理出的讀碼語言，
+不是說作者在 `Canvas.md` 裡就原封不動這樣命名。
+
+這個分清楚，你的筆記會更嚴謹。
+
+---
+
+# 一、先抓總原理：PPTist 的畫布不是直接綁在螢幕像素上
+
+## 先講原理
+
+PPTist 畫布系統最核心的想法其實很單純：
+
+> **先固定一張邏輯畫布，元素資料永遠活在這張畫布裡；畫面只是把這張畫布縮放後顯示出來。**
+
+如果不這樣做，而是讓元素直接綁在目前 DOM 顯示尺寸上，馬上會出現幾個問題：
+
+* 不同螢幕大小下，版面意義不穩定
+* 拖曳、框選、旋轉時，滑鼠距離很難直接對回元素資料
+* 主畫布、縮圖、放映頁要共用資料時會很亂
+* 匯出或切換顯示場景時，不容易保持一致版面
+
+所以 PPTist 不是讓元素資料跟著螢幕尺寸跑，
+而是先把它們固定在同一套邏輯座標系中。
+
+---
+
+## 再對回 Source
+
+### 1. `doc/Canvas.md` 先講了這件事
+作者在 `doc/Canvas.md` 裡直接說明：
+
+* 可視區域預設以 **寬 1000**、**高 562.5** 為基準比例
+* 一個 `{ width: 1000, height: 562.5, left: 0, top: 0 }` 的元素，會剛好鋪滿整個可視區域
+* 當實際可視區域變成別的大小時，做法是先算縮放比，再把可視區域內元素整體縮放
+
+這段其實就是整個畫布模型的源頭。
+
+---
+
+### 2. `slides.ts` 把這個原理落地成 store 狀態
+在 `src/store/slides.ts` 裡：
+
+```ts
+viewportSize: 1000
+viewportRatio: 0.5625
+```
+
+這兩個值代表：
+
+* `viewportSize`：邏輯畫布寬度基準
+* `viewportRatio`：邏輯畫布高寬比
+
+所以邏輯畫布實際上就是：
+
+```ts
+width = viewportSize
+height = viewportSize * viewportRatio
+```
+
+也就是：
+
+```ts
+width = 1000
+height = 562.5
+```
+
+請注意：
+
+> **這裡講的是邏輯基準，不是現在畫面上真的永遠顯示一個 1000px 寬的盒子。**
+
+---
+
+# 二、資料大小和畫面大小不是同一件事
+
+## 先講原理
+
+這是理解 `canvasPercentage`、`canvasScale` 的關鍵。
+
+在 PPTist 裡，你看到的「畫面上這張投影片有多大」，
+不等於「資料裡的元素就有多大」。
+
+更精準地說：
+
+* **資料世界**：永遠用固定邏輯畫布當基準
+* **畫面世界**：依容器大小與縮放狀態，把這張邏輯畫布映射到螢幕上
+
+所以同一個元素資料：
+
+```ts
+{ left: 100, top: 50, width: 200, height: 80 }
+```
+
+在資料層的意義永遠固定；
+真正改變的是它**顯示出來時的視覺大小**。
+
+---
+
+## 再對回 Source
+
+### 1. `main.ts` 裡有兩個容易混的值
+在 `src/store/main.ts` 裡：
+
+```ts
+canvasPercentage: 90
+canvasScale: 1
+canvasDragged: false
+```
+
+其中：
+
+* `canvasPercentage`：畫布可視區域想占容器多少比例
+* `canvasScale`：邏輯畫布最後實際要縮放幾倍
+* `canvasDragged`：畫布是否已被拖曳過
+
+也就是：
+
+> `canvasPercentage` 是「顯示目標」
+> `canvasScale` 是「計算結果」
+
+---
+
+### 2. `useScaleCanvas.ts` 也直接把這個設計寫出來了
+在 `src/hooks/useScaleCanvas.ts` 裡，作者自己就寫了這段註解精神：
+
+```ts
+// 设置画布缩放比例
+// 但不是直接设置该值，而是通过设置画布可视区域百分比来动态计算
+```
+
+你會看到：
+
+* `scaleCanvas('+') / scaleCanvas('-')` 其實是改 `canvasPercentage`
+* `setCanvasScalePercentage()` 也是先回推百分比，再交給系統重算
+* `resetCanvas()` 會把百分比重設為 `90`
+
+所以 PPTist 的思路不是：
+
+> 我要直接把畫布改成 1.13 倍
+
+而是：
+
+> 我要讓畫布在容器裡顯示得更大或更小，再讓系統重算真正的 `canvasScale`
+
+這樣比較穩，因為真正的縮放倍率本來就跟容器大小有關。
+
+---
+
+# 三、為什麼現在的實作是 `viewport-wrapper + viewport`
+
+## 先講原理
+
+這一節很重要。
+
+很多人第一次看 `Canvas/index.vue`，會直覺覺得只是多包一層 DOM。
+但如果你把這層看成單純「多包一層」，後面很多事情都會開始混掉。
+
+這裡先直接講結論：
+
+> **`viewport-wrapper` 比較像目前畫面上這張投影片的顯示外框。**
+> **`viewport` 比較像固定邏輯畫布真正承載內容、並被 scale 的那一層。**
+
+你可以把它想成：
+
+* `viewport`：原稿
+* `viewport-wrapper`：相框
+
+原稿負責內容怎麼畫，
+相框負責它現在在畫面上有多大、放在哪裡。
+
+---
+
+## 再對回 Source
+
+### 1. `Canvas/index.vue` 目前確實是這種結構
+核心結構可以先壓成這樣看：
+
+```vue
+<div class="viewport-wrapper" :style="{ width, height, left, top }">
+  <div class="operates">...</div>
+  <div class="viewport" :style="{ transform: `scale(${canvasScale})` }">
+    ...
+  </div>
+</div>
+```
+
+這裡最關鍵的不是 class 名字本身，
+而是它把兩種責任拆開了。
+
+---
+
+### 2. `viewport-wrapper` 負責的是「外框佔位與定位」
+在 `Canvas/index.vue` 裡：
+
+```vue
+<div
+  class="viewport-wrapper"
+  :style="{
+    width: viewportStyles.width * canvasScale + 'px',
+    height: viewportStyles.height * canvasScale + 'px',
+    left: viewportStyles.left + 'px',
+    top: viewportStyles.top + 'px',
+  }"
+>
+```
+
+這代表它處理的是：
+
+* 目前畫面上這張投影片看起來多大
+* 左上角落在哪裡
+
+所以它的 `width / height` 是：
+
+```ts
+邏輯尺寸 × canvasScale
+```
+
+而 `left / top` 則是：
+
+```ts
+這張投影片在畫布區中的顯示位置
+```
+
+換句話說：
+
+> **wrapper 處理的是畫面上的矩形外框。**
+
+---
+
+### 3. `viewport` 負責的是「內容照邏輯尺寸渲染，再整體縮放」
+同一個檔案裡：
+
+```vue
+<div
+  class="viewport"
+  ref="viewportRef"
+  :style="{ transform: `scale(${canvasScale})` }"
+>
+```
+
+這層才是真正對內容做：
+
+```ts
+transform: scale(canvasScale)
+```
+
+也就是說：
+
+* 元素仍然照邏輯座標渲染
+* 縮放發生在整張內容層上
+
+所以 `viewport` 比較像：
+
+> **固定邏輯畫布的顯示層本體**
+
+---
+
+## 很容易誤會的點：這樣是不是縮放了兩次？
+
+不是。
+
+這裡比較精準的理解應該是：
+
+* `viewport-wrapper`：先用 **縮放後的尺寸** 來決定外框要占多少空間、放在哪裡
+* `viewport`：再把 **固定邏輯尺寸內容** 用 `scale()` 畫進這個外框裡
+
+所以不是對同一層內容做兩次縮放，
+而是：
+
+> **外層在處理佔位與定位，內層在處理內容縮放。**
+
+這個說法會比「縮放兩次」更貼近目前 source。
+
+---
+
+# 四、`operates`、`viewport`、`Ruler` 到底誰跟誰在同一層
+
+## 先講原理
+
+這一節是為了避免把 `doc/Canvas.md` 的概念圖，和目前 `Canvas/index.vue` 的 DOM 結構硬對成同一套字。
+
+`doc/Canvas.md` 裡講的是概念分層：
+
+* 可視區域
+* 畫布工具
+
+這是抽象模型。
+
+而 `Canvas/index.vue` 裡長成的是：
+
+* `viewport-wrapper`
+  * `operates`
+  * `viewport`
+* `Ruler`
+
+這是當前實作。
+
+兩者有對應關係，但不是逐字對應。
+
+---
+
+## 再對回 Source
+
+### 1. `doc/Canvas.md` 的概念分層
+作者文件裡把畫布拆成：
+
+```text
+畫布
+├── 可視區域
+│    ├── 可編輯元素
+│    └── 鼠標選框
+└── 畫布工具
+     ├── 參考線
+     ├── 標尺
+     ├── 元素操作節點層
+     ├── 吸附對齊線
+     └── 可視區域背景
+```
+
+這是在講「責任分工」。
+
+---
+
+### 2. 目前 `Canvas/index.vue` 的落地方式
+現在的實作裡：
+
+#### `operates` 這層裡面有：
+
+* `AlignmentLine`
+* `MultiSelectOperate`
+* `Operate`
+* `ViewportBackground`
+
+也就是說，
+它承接了相當多「畫布工具」類型的東西。
+
+---
+
+#### `viewport` 這層裡面有：
+
+* `MouseSelection`
+* `EditableElement`
+
+這就很接近 `Canvas.md` 裡說的：
+
+* 可編輯元素
+* 鼠標選框
+
+---
+
+#### `Ruler` 不在 wrapper 裡，而是在外面
+這點很值得你在筆記裡寫清楚。
+
+目前 `Canvas/index.vue` 裡：
+
+```vue
+<Ruler :viewportStyles="viewportStyles" :elementList="elementList" v-if="showRuler" />
+```
+
+它不在 `viewport-wrapper` 裡，
+而是放在外面，透過 `viewportStyles` 來知道目前可視區域的位置與大小。
+
+所以比較精準的講法應該是：
+
+> **`operates` 和 `viewport` 都在 `viewport-wrapper` 裡共享同一個投影片外框。**
+> **但 `Ruler` 是 wrapper 外部的畫布工具，透過 `viewportStyles` 和畫布同步。**
+
+這會比「所有和畫布有關的層都在 wrapper 裡」更貼近現在的原始碼。
+
+---
+
+# 五、`useViewportSize.ts` 真正解的是：現在該顯示多大、放在哪裡
+
+## 先講原理
+
+如果說 `slides.ts` 定義的是：
+
+> 這張投影片在邏輯世界裡有多大
+
+那 `useViewportSize.ts` 解的就是：
+
+> 這張固定邏輯畫布，現在在這個容器裡應該顯示成多大、放在哪裡
+
+這個 hook 管的不是元素資料，
+而是整張投影片外框在畫面中的：
+
+* 縮放
+* 位置
+* 初始化置中
+* 縮放後重新定位
+* 拖曳後位置更新
+
+所以它本質上是在處理：
+
+> **顯示映射**
+
+而不是元素內容本身。
+
+---
+
+## 再對回 Source
+
+### 1. 初始化時：先判斷是用寬度還是高度當基準
+在 `useViewportSize.ts` 裡，初始化位置時大致是這樣：
+
+```ts
+if (canvasHeight / canvasWidth > viewportRatio.value) {
+  const viewportActualWidth = canvasWidth * (canvasPercentage.value / 100)
+  mainStore.setCanvasScale(viewportActualWidth / viewportSize.value)
+  viewportLeft.value = (canvasWidth - viewportActualWidth) / 2
+  viewportTop.value = (canvasHeight - viewportActualWidth * viewportRatio.value) / 2
+}
+else {
+  const viewportActualHeight = canvasHeight * (canvasPercentage.value / 100)
+  mainStore.setCanvasScale(viewportActualHeight / (viewportSize.value * viewportRatio.value))
+  viewportLeft.value = (canvasWidth - viewportActualHeight / viewportRatio.value) / 2
+  viewportTop.value = (canvasHeight - viewportActualHeight) / 2
+}
+```
+
+這段在回答的是：
+
+* 這次容器是「寬先成限制」
+* 還是「高先成限制」
+
+這是所有固定比例縮放系統都要做的事。
+
+#### 1.1 為什麼先判斷 `canvasHeight / canvasWidth > viewportRatio.value`
+先把這兩個值翻成白話：
+
+* `canvasHeight / canvasWidth`：外層容器目前的高寬比
+* `viewportRatio.value`：投影片固定的高寬比
+
+所以這個判斷本質上是在問：
+
+> **容器相對於投影片來說，是比較高，還是比較扁？**
+
+如果：
+
+```ts
+canvasHeight / canvasWidth > viewportRatio.value
+```
+
+代表容器比投影片更高，
+也就是說高度相對充裕，寬度比較容易先成為限制。
+
+這時候程式就會選擇：
+
+> **先用寬度決定投影片要顯示多大，再依比例反推出高度。**
+
+反過來說，如果容器比投影片更扁，
+就要改成以高度為基準，避免先用寬度去放時，高度反而超出容器。
+
+換句話說，這個 `if / else` 不是在做什麼複雜技巧，
+而是在決定：
+
+> **這次該用寬度縮放，還是用高度縮放。**
+
+#### 1.2 以「寬度為基準」時，四行程式各自在做什麼
+當條件成立時，代表這次是：
+
+> **先決定投影片在畫面上要顯示多寬，再把它置中放進容器。**
+
+這四行可以拆成四步看：
+
+```ts
+const viewportActualWidth = canvasWidth * (canvasPercentage.value / 100)
+mainStore.setCanvasScale(viewportActualWidth / viewportSize.value)
+viewportLeft.value = (canvasWidth - viewportActualWidth) / 2
+viewportTop.value = (canvasHeight - viewportActualWidth * viewportRatio.value) / 2
+```
+
+##### 第一步：先算這次畫面上要顯示多寬
+
+```ts
+const viewportActualWidth = canvasWidth * (canvasPercentage.value / 100)
+```
+
+這行算的是：
+
+> **投影片這次在畫面上，實際想顯示成多寬。**
+
+例如容器寬度是 `1600`，`canvasPercentage = 90`，
+就會得到：
+
+```ts
+viewportActualWidth = 1600 * 0.9 = 1440
+```
+
+意思是：
+
+> 這次投影片不要塞滿整個容器，
+> 而是先以容器寬度的 90% 當成顯示寬度。
+
+這樣做的目的，是保留一些留白，
+讓畫面不要太滿，也比較方便操作。
+
+##### 第二步：再反推出真正的縮放倍率
+
+```ts
+mainStore.setCanvasScale(viewportActualWidth / viewportSize.value)
+```
+
+這裡的：
+
+* `viewportActualWidth` 是畫面上的實際寬度
+* `viewportSize.value` 是邏輯畫布的原始寬度
+
+所以這行其實就是：
+
+```ts
+canvasScale = 實際顯示寬度 / 邏輯寬度
+```
+
+例如：
+
+```ts
+viewportActualWidth = 1440
+viewportSize = 1000
+```
+
+那就會得到：
+
+```ts
+canvasScale = 1440 / 1000 = 1.44
+```
+
+意思是：
+
+> 原本邏輯上寬 `1000` 的投影片，
+> 現在要放大成 `1.44` 倍，畫面上才會變成 `1440` 寬。
+
+##### 第三步：算水平置中的 `left`
+
+```ts
+viewportLeft.value = (canvasWidth - viewportActualWidth) / 2
+```
+
+這一行最容易卡住，關鍵是要先記住：
+
+> `left` 存的不是中心點，
+> 而是 **投影片左上角距離容器左邊界多少。**
+
+所以它不是在算「中心在哪」，
+而是在算：
+
+> **要讓投影片左右置中，左邊應該先留多少空白。**
+
+先看：
+
+```ts
+canvasWidth - viewportActualWidth
+```
+
+這會算出：
+
+> 容器扣掉投影片之後，水平方向總共剩下多少空白。
+
+例如：
+
+```ts
+canvasWidth = 1600
+viewportActualWidth = 1440
+```
+
+就會得到：
+
+```ts
+1600 - 1440 = 160
+```
+
+這個 `160` 代表左右總共多出 `160px` 的空白。
+如果要置中，就要把它平均分到左右兩邊：
+
+```ts
+160 / 2 = 80
+```
+
+所以：
+
+```ts
+viewportLeft = 80
+```
+
+意思就是：
+
+* 左邊留 `80px`
+* 右邊也留 `80px`
+
+投影片自然就會水平置中。
+
+你可以把它想成：
+
+```text
+|<------------------- canvasWidth ------------------->|
+
+|---- left ----|<------- viewportActualWidth ------->|---- right ----|
+```
+
+而水平置中的本質就是：
+
+```ts
+left = right = (canvasWidth - viewportActualWidth) / 2
+```
+
+##### 第四步：算垂直置中的 `top`
+
+```ts
+viewportTop.value = (canvasHeight - viewportActualWidth * viewportRatio.value) / 2
+```
+
+這一行邏輯和 `left` 完全一樣，
+只是方向從水平改成垂直。
+
+先注意：這裡目前是「以寬度為基準」。
+既然寬度已經先決定成 `viewportActualWidth`，
+那高度就不能亂設，而是要維持投影片原本比例：
+
+```ts
+viewportActualHeight = viewportActualWidth * viewportRatio.value
+```
+
+所以這一行其實等價於：
+
+```ts
+viewportTop.value = (canvasHeight - viewportActualHeight) / 2
+```
+
+意思是：
+
+> 先算出投影片實際顯示高度，
+> 再看容器在垂直方向總共剩多少空白，
+> 最後把空白平均分到上面和下面。
+
+例如：
+
+```ts
+canvasHeight = 1200
+viewportActualWidth = 1440
+viewportRatio = 0.5625
+```
+
+先算出投影片實際高度：
+
+```ts
+viewportActualHeight = 1440 * 0.5625 = 810
+```
+
+那上下總空白就是：
+
+```ts
+1200 - 810 = 390
+```
+
+平均分到上下兩邊：
+
+```ts
+390 / 2 = 195
+```
+
+所以：
+
+```ts
+viewportTop = 195
+```
+
+意思是：
+
+* 上面留 `195px`
+* 下面也留 `195px`
+
+投影片就會垂直置中。
+
+這裡同樣要記住：
+
+> `top` 存的是投影片左上角距離容器上邊界多少，
+> 不是中心點的 y 座標。
+
+所以它的本質也是：
+
+```ts
+top = bottom = (canvasHeight - viewportActualHeight) / 2
+```
+
+#### 1.3 把這四行串成一句話
+如果用最簡單的語言壓縮這段流程，
+其實就是：
+
+1. 先判斷這次該用寬還是高當縮放基準
+2. 算出投影片這次在畫面上要顯示多大
+3. 反推出對應的 `canvasScale`
+4. 再用「剩餘空白 ÷ 2」算出 `left / top`，把投影片置中
+
+所以這裡的 `left` 和 `top`，
+本質上都不是在算中心點，
+而是在算：
+
+> **這張投影片左上角，應該放在容器中的哪個位置。**
+
+---
+
+### 2. `canvasScale` 本質上就是「實際顯示尺寸 ÷ 邏輯尺寸」
+如果你把上面的公式壓縮一下，其實核心就是：
+
+```ts
+canvasScale = 實際顯示寬度 / 邏輯寬度
+```
+
+或
+
+```ts
+canvasScale = 實際顯示高度 / 邏輯高度
+```
+
+所以它不是憑空來的數字，
+而是「容器條件 + 顯示百分比」共同推回來的結果。
+
+---
+
+### 3. 縮放時不是只改 scale，也會修正位置
+`useViewportSize.ts` 裡的 `setViewportPosition(newValue, oldValue)` 更值得注意。
+
+當 `canvasPercentage` 改變時，
+它不是只重算 `canvasScale` 而已，
+還會比較：
+
+* 新的實際寬高
+* 舊的實際寬高
+
+再把 `viewportLeft / viewportTop` 往回修正半個差值。
+
+也就是：
+
+```ts
+viewportLeft.value = viewportLeft.value - (newWidth - oldWidth) / 2
+viewportTop.value = viewportTop.value - (newHeight - oldHeight) / 2
+```
+
+這樣縮放時，畫布看起來才會以中心為主繼續展開或收縮，
+而不是只往某一側偏移。
+
+這一點很值得你寫進筆記，
+因為它能把「縮放只是改倍率」這種過度簡化的理解修正掉。
+
+---
+
+### 4. `viewportStyles` 的內容要講準
+在 `useViewportSize.ts` 裡：
+
+```ts
+const viewportStyles = computed(() => ({
+  width: viewportSize.value,
+  height: viewportSize.value * viewportRatio.value,
+  left: viewportLeft.value,
+  top: viewportTop.value,
+}))
+```
+
+這裡要特別注意：
+
+* `width / height` 是**邏輯尺寸**
+* `left / top` 是**畫面上的顯示位置**
+
+再搭配 `Canvas/index.vue` 的：
+
+```ts
+width: viewportStyles.width * canvasScale
+height: viewportStyles.height * canvasScale
+```
+
+你就會更清楚：
+
+> `viewportStyles` 本身沒有把寬高乘上縮放。
+> 真正顯示尺寸的轉換，是在 `viewport-wrapper` 那一層發生的。
+
+這是現在原始碼的一個很清楚的責任分界。
+
+---
+
+# 六、拖曳整張畫布，改的不是元素座標，而是外框位置
+
+## 先講原理
+
+拖曳整張畫布時，
+你不是在改某個元素的 `left / top`，
+而是在改：
+
+> **整張投影片外框在畫面中的位置**
+
+這也是為什麼這件事屬於 `useViewportSize.ts`，
+而不是某個元素操作 hook。
+
+---
+
+## 再對回 Source
+
+在 `useViewportSize.ts` 的 `dragViewport()` 裡：
+
+```ts
+const originLeft = viewportLeft.value
+const originTop = viewportTop.value
+
+viewportLeft.value = originLeft + (currentPageX - startPageX)
+viewportTop.value = originTop + (currentPageY - startPageY)
+```
+
+滑鼠放開後還會：
+
+```ts
+mainStore.setCanvasDragged(true)
+```
+
+另外，`useViewportSize.ts` 還有這段監聽：
+
+```ts
+watch(canvasDragged, () => {
+  if (!canvasDragged.value) initViewportPosition()
+})
+```
+
+這代表：
+
+* 畫布被拖曳後，會記錄成「已經不是初始化置中狀態」
+* 當外部把 `canvasDragged` 復原成 `false` 時，才重新置中
+
+這也能對回 `useScaleCanvas.ts` 的 `resetCanvas()`：
+
+* 重設百分比為 `90`
+* 如果畫布曾被拖曳，則把 `canvasDragged` 改回 `false`
+
+所以拖曳畫布這件事，
+本質上就是在改：
+
+* `viewportLeft`
+* `viewportTop`
+* `canvasDragged`
+
+不是在改任何元素資料。
+
+---
+
+# 七、滑鼠事件拿到的是畫面座標，不是邏輯座標
+
+## 先講原理
+
+使用者在螢幕上點到的位置，是**顯示後的座標**；
+但你最後要存進元素資料的，是**邏輯畫布裡的座標**。
+
+所以中間一定要做一層換算：
+
+```ts
+邏輯座標 = 相對於畫布左上角的顯示座標 / canvasScale
+```
+
+這其實就是畫布系統最核心的反向映射。
+
+---
+
+## 再對回 Source
+
+### 1. 雙擊插入文字時就是這樣做
+在 `Canvas/index.vue` 的 `handleDblClick` 裡：
+
+```ts
+const viewportRect = viewportRef.value.getBoundingClientRect()
+
+const left = (e.pageX - viewportRect.x) / canvasScale.value
+const top = (e.pageY - viewportRect.y) / canvasScale.value
+```
+
+接著建立文字元素時：
+
+```ts
+width: 200 / canvasScale.value
+```
+
+原始碼註解也直接寫了：
+
+```ts
+// 除以 canvasScale 是为了与点击选区创建的形式保持相同的宽度
+```
+
+所以這裡不是在做什麼特別魔法，
+它只是很老實地在做兩件事：
+
+1. 先把滑鼠點擊位置換成「相對於目前畫布」
+2. 再把顯示座標反推回邏輯座標
+
+---
+
+### 2. 重點不是雙擊這個功能，而是這套公式
+這個例子最重要的不是「雙擊新增文字」本身，
+而是它把整套規則示範得很清楚：
+
+```ts
+邏輯座標 = (畫面座標 - 畫布左上角偏移) / canvasScale
+```
+
+你後面再去看框選、旋轉、縮放，
+本質上都還是在處理同一個問題。
+
+---
+
+# 八、元素自己其實不知道畫布現在縮放幾倍
+
+## 先講原理
+
+這是畫布分層設計最漂亮的地方之一。
+
+元素元件本身不需要一直去想：
+
+* 我現在是不是 0.8 倍？
+* 我是不是被放大到 1.4 倍？
+
+因為這些事不該由元素自己處理。
+
+更好的分工是：
+
+* **元素只描述自己的邏輯座標與邏輯尺寸**
+* **畫布層負責把整張邏輯畫布映射到目前畫面上**
+
+這樣資料模型才穩定，元件責任也才乾淨。
+
+---
+
+## 再對回 Source
+
+你拿 `TextElement/index.vue` 來看就很清楚。
+
+在文字元素元件裡：
+
+```vue
+:style="{
+  top: elementInfo.top + 'px',
+  left: elementInfo.left + 'px',
+  width: elementInfo.width + 'px',
+  height: elementInfo.height + 'px',
+}"
+```
+
+這裡沒有乘 `canvasScale`。
+
+不是作者忘了乘，
+而是因為外層 `viewport` 已經整張做了：
+
+```ts
+transform: scale(canvasScale)
+```
+
+所以元素元件本身只需要處理：
+
+* 在邏輯畫布裡，我在哪裡
+* 在邏輯畫布裡，我有多大
+
+至於現在實際畫面上顯示幾個像素，
+那是外層畫布系統的事。
+
+這就是為什麼你可以說：
+
+> **元素活在邏輯世界，畫布層負責把它映射到顯示世界。**
+
+---
+
+# 九、把 `doc/Canvas.md` 和目前 Vue 實作真正對起來
+
+## 先講原理
+
+如果你只看 `Canvas.md`，
+你會得到一個比較概念化的模型；
+如果你只看 `Canvas/index.vue`，
+你又可能只看到一堆 class 和組件。
+
+真正有用的，是把兩者接起來。
+
+---
+
+## 再對回 Source
+
+你可以這樣對：
+
+### `doc/Canvas.md` 的「可視區域」
+在目前實作裡，比較接近：
+
+* `viewport` 這層的內容區
+* 裡面的 `MouseSelection`
+* 裡面的 `EditableElement`
+
+因為這些都是直接站在邏輯畫布上被縮放顯示的東西。
+
+---
+
+### `doc/Canvas.md` 的「畫布工具」
+在目前實作裡，比較接近：
+
+* `operates` 這層裡的 `AlignmentLine`
+* `MultiSelectOperate`
+* `Operate`
+* `ViewportBackground`
+* 外層的 `Ruler`
+
+也就是：
+
+> 有些工具在 wrapper 裡面，
+> 有些工具在 wrapper 外面，
+> 但它們都圍繞著同一張「目前投影片外框」在工作。
+
+這個說法會比粗略地說「全部都在 wrapper」更貼近現在 source。
+
+---
+
+# 十、把整條流程收成一條真正能背的主線
+
+到這裡，你應該可以把目前 PPTist 畫布系統壓成下面這條主線：
+
+```text
+doc/Canvas.md
+  先定義：元素資料活在固定邏輯畫布裡
+    ->
+slides.ts
+  用 viewportSize / viewportRatio 定義邏輯畫布基準
+    ->
+main.ts
+  保存 canvasPercentage / canvasScale / canvasDragged
+    ->
+useScaleCanvas.ts
+  使用者縮放時，先改 canvasPercentage，而不是直接硬改 canvasScale
+    ->
+useViewportSize.ts
+  根據容器大小、比例、百分比，算出真正的 canvasScale、left、top
+  縮放時同步修正位置
+  拖曳時更新 viewportLeft / viewportTop
+    ->
+Canvas/index.vue
+  用 viewport-wrapper 承接縮放後的外框與定位
+  用 operates 承接操作層
+  用 viewport 承接內容層並做 scale
+  用事件把畫面座標換回邏輯座標
+    ->
+各元素元件（如 TextElement）
+  永遠照邏輯座標渲染
+```
+
+這條如果你能順著講出來，
+就不只是「看過 source」，而是真的懂它在怎麼分層。
+
+---
+
+# 十一、這篇最容易考自己的 6 個檢查點
+
+## 1. `viewportSize = 1000` 是不是畫面一定顯示 1000px？
+不是。
+它是邏輯畫布寬度基準。
+
+---
+
+## 2. `canvasPercentage` 和 `canvasScale` 是不是同一件事？
+不是。
+
+* `canvasPercentage`：顯示目標
+* `canvasScale`：計算結果
+
+---
+
+## 3. `viewport-wrapper` 和 `viewport` 是不是重複包一層？
+不是。
+
+* `viewport-wrapper`：縮放後外框的佔位與定位
+* `viewport`：固定邏輯內容層的縮放
+
+---
+
+## 4. `viewportStyles.width / height` 是不是已經乘上縮放？
+不是。
+它們仍然是邏輯尺寸。
+真正乘上 `canvasScale` 是在 `viewport-wrapper` 那裡。
+
+---
+
+## 5. 拖曳畫布是在改元素位置嗎？
+不是。
+它改的是 `viewportLeft / viewportTop`，也就是整張投影片外框的位置。
+
+---
+
+## 6. 元素元件為什麼不用自己乘 `canvasScale`？
+因為外層 `viewport` 已經整體做了 `scale()`。
+元素只要專心使用邏輯座標渲染。
+
+---
+
+# 十二、30 秒速查版
+
+如果之後你只想快速複習，請直接記這幾句：
+
+* `doc/Canvas.md` 先定義了：元素資料活在固定邏輯畫布裡
+* `slides.ts` 用 `viewportSize = 1000`、`viewportRatio = 0.5625` 定義邏輯畫布基準
+* `main.ts` 裡 `canvasPercentage` 是顯示目標，`canvasScale` 是實際縮放倍率
+* `useScaleCanvas.ts` 不直接硬改 `canvasScale`，而是先改 `canvasPercentage`
+* `useViewportSize.ts` 根據容器大小算出真正的 `canvasScale`、`left`、`top`
+* `viewport-wrapper` 負責縮放後外框的佔位與定位
+* `viewport` 負責承接固定邏輯內容並做 `scale()`
+* `operates` 承接大部分操作層；`Ruler` 在 wrapper 外，但靠 `viewportStyles` 同步
+* 元素元件一直使用邏輯座標渲染，不自己處理縮放
+* 事件要回寫資料前，一定要先把畫面座標換回邏輯座標
+
+核心公式就是：
+
+```ts
+邏輯座標 = (畫面座標 - 畫布左上角偏移) / canvasScale
+```
+
+---
+
+# 十三、這版相較於前一版，刻意修正了什麼
+
+這裡直接列出最重要的幾個修正點：
+
+## 1. 不再把 `Canvas.md` 的說法和 `Canvas/index.vue` 的 class 名字混成一套
+這版會清楚區分：
+
+* `Canvas.md`：概念模型
+* `Canvas/index.vue`：當前實作結構
+
+這樣更嚴謹。
+
+---
+
+## 2. 更明確寫出 `viewportStyles.width / height` 仍然是邏輯尺寸
+這點很重要，因為真正乘上 `canvasScale` 的地方是在 wrapper。
+
+---
+
+## 3. 更精準寫出 `operates` 和 `Ruler` 的位置差異
+這版不會再粗略說成「操作層都在 wrapper 裡」。
+
+更貼近現在原始碼的說法是：
+
+* `AlignmentLine / Operate / MultiSelectOperate / ViewportBackground` 在 wrapper 裡
+* `Ruler` 在 wrapper 外，靠 `viewportStyles` 同步
+
+---
+
+## 4. 補上縮放時同步修正位置這件事
+這版把 `setViewportPosition()` 裡「新舊寬高差的一半」也講進來，
+讓你知道 PPTist 不是只有重算 `canvasScale` 而已。
+
+---
+
+## 5. 改掉「行號導向」的讀法
+這版盡量用：
+
+* 檔名
+* 函式名
+* 組件名
+* 狀態名
+
+去定位，而不是寫「第幾行附近」。
+
+因為 GitHub 行號會隨版本漂移，
+但結構名稱通常比較穩。
+
+---
+
+# 一句話總結
+
+> **PPTist 先用固定邏輯畫布保存元素資料，再透過 `canvasScale` 把這張畫布映射到目前容器中；`viewport-wrapper` 承接縮放後外框，`viewport` 承接縮放內容，而所有互動最後都要換回同一套邏輯座標系。**
+
+---
