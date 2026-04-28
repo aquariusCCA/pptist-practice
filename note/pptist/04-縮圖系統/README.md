@@ -1,42 +1,77 @@
 # 04-縮圖系統
 
-本章主要整理 `PPTist` 如何把 `03-畫布系統` 的固定邏輯畫布，重用成左側縮圖、播放頁縮圖列、手機預覽與匯出用的小型渲染器。這一章剛好是從畫布概念走向狀態流之前的橋接章節。
+這一章聚焦 `PPTist` 的縮圖能力。重點不是單看左側縮圖列表，而是把整個「同一份投影片資料，如何在多個場景被縮小後重用」的鏈路看清楚。
 
-## 本章在學什麼
+`PPTist` 的縮圖系統可以拆成四層：
 
-- `ThumbnailSlide` 怎麼沿用固定邏輯尺寸，再用 `scale` 縮成縮圖
-- `size` 參數真正代表什麼，為什麼有些地方會傳 `120 / viewportRatio`
-- 縮圖怎麼重用既有元素元件，而不是另外維護一套渲染邏輯
-- `useLoadSlides` 怎麼做分批載入，避免一次渲染太多頁
-- 為什麼同一個縮圖元件可以被編輯器、播放頁、行動版與匯出流程共用
+1. `slides store` 提供投影片資料與畫布基準尺寸。
+2. `ThumbnailSlide` 把單頁投影片渲染成可重用的縮圖 renderer。
+3. `ThumbnailElement` 依元素型別切到對應的基礎元件，並用 `target="thumbnail"` 啟用縮圖模式。
+4. 各場景元件，例如編輯器左側、播放底部、講者模式、手機預覽、匯出面板，只負責決定縮圖尺寸、排列方式與互動。
 
-## 本章與整體地圖的關係
+這樣的設計很值得學，因為它沒有為每個場景各寫一套縮圖模板，而是把「縮圖其實就是縮小版投影片」這件事落到元件層。
 
-- 前置知識：[03-畫布系統](../03-%E7%95%AB%E5%B8%83%E7%B3%BB%E7%B5%B1/README.md)
-- 這章的核心任務：看懂「同一份投影片資料，如何被縮成不同場景裡的預覽畫面」
-- 讀完後通常接：[05-store與狀態流](../05-store%E8%88%87%E7%8B%80%E6%85%8B%E6%B5%81/README.md)
+## 本章你會學到什麼
+
+- `ThumbnailSlide` 為什麼只收 `slide`、`size`、`visible` 三個主要輸入
+- `size` 為什麼代表寬度，而不是高度
+- `scale = size / viewportSize` 如何把大畫布縮成小畫面
+- `target="thumbnail"` 如何讓元素元件進入縮圖模式
+- `useLoadSlides` 怎麼分批載入縮圖，避免一次渲染太多頁
+- 編輯器左側縮圖列表如何處理選取、複選、拖曳排序、聚焦與自動捲動
+- 為什麼講者模式與底部縮圖列會寫成 `size / viewportRatio`
+- 同一個 `ThumbnailSlide` 為什麼還能拿去做匯出圖片與 PDF 的高解析渲染
 
 ## 建議閱讀順序
 
-1. [縮圖元件設計筆記](./%E7%B8%AE%E5%9C%96%E5%85%83%E4%BB%B6%E8%A8%AD%E8%A8%88%E7%AD%86%E8%A8%98.md)
+1. [00-縮圖系統總覽](./00-縮圖系統總覽.md)
+2. [01-縮圖渲染元件設計](./01-縮圖渲染元件設計.md)
+3. [02-編輯器縮圖列表與互動](./02-編輯器縮圖列表與互動.md)
+4. [03-縮圖跨場景共用](./03-縮圖跨場景共用.md)
+5. [04-焦點、快捷鍵與多選資料流](./04-焦點、快捷鍵與多選資料流.md)
+6. [05-排序、區段與頁面管理規則](./05-排序、區段與頁面管理規則.md)
+7. [06-載入策略與效能考量](./06-載入策略與效能考量.md)
 
-## 本章所有小節
+## 對照原始碼
 
-- [縮圖元件設計筆記](./%E7%B8%AE%E5%9C%96%E5%85%83%E4%BB%B6%E8%A8%AD%E8%A8%88%E7%AD%86%E8%A8%98.md)
+- `src/views/components/ThumbnailSlide/index.vue`
+- `src/views/components/ThumbnailSlide/ThumbnailElement.vue`
+- `src/hooks/useLoadSlides.ts`
+- `src/hooks/useGlobalHotkey.ts`
+- `src/hooks/useSlideHandler.ts`
+- `src/views/Editor/Thumbnails/index.vue`
+- `src/views/Editor/Thumbnails/Templates.vue`
+- `src/views/Editor/Canvas/LinkDialog.vue`
+- `src/views/Screen/PresenterView.vue`
+- `src/views/Screen/BottomThumbnails.vue`
+- `src/views/Screen/SlideThumbnails.vue`
+- `src/views/Mobile/MobilePreview.vue`
+- `src/views/Mobile/MobileThumbnails.vue`
+- `src/views/Editor/ExportDialog/ExportImage.vue`
+- `src/views/Editor/ExportDialog/ExportPDF.vue`
+- `src/store/slides.ts`
+- `src/store/main.ts`
 
-## 高頻回查入口
+## 與前後章節的關係
 
-- 想確認縮圖是不是另一套座標系時，看：[縮圖元件設計筆記](./%E7%B8%AE%E5%9C%96%E5%85%83%E4%BB%B6%E8%A8%AD%E8%A8%88%E7%AD%86%E8%A8%98.md)
-- 想確認 `size` 到底代表寬還是高時，看：[縮圖元件設計筆記](./%E7%B8%AE%E5%9C%96%E5%85%83%E4%BB%B6%E8%A8%AD%E8%A8%88%E7%AD%86%E8%A8%98.md)
-- 想確認縮圖為什麼不一次把所有頁都渲染出來時，看：[縮圖元件設計筆記](./%E7%B8%AE%E5%9C%96%E5%85%83%E4%BB%B6%E8%A8%AD%E8%A8%88%E7%AD%86%E8%A8%98.md)
-- 想確認哪些地方共用 `ThumbnailSlide` 時，看：[縮圖元件設計筆記](./%E7%B8%AE%E5%9C%96%E5%85%83%E4%BB%B6%E8%A8%AD%E8%A8%88%E7%AD%86%E8%A8%98.md)
+- 先讀 `03-畫布系統`，你會更容易理解 `viewportSize`、`viewportRatio`、`scale` 的來源。
+- 再讀 `05-store與狀態流`，可以把縮圖系統依賴的 store 狀態補齊。
 
-## 易混淆主題
+## 本章核心地圖
 
-- `縮圖系統` vs `畫布系統`：前者不是新座標系，而是後者的縮小版渲染
-- `size` vs `height`：`size` 在 `ThumbnailSlide` 裡代表寬度，不是高度
-- `縮圖渲染` vs `縮圖互動`：渲染核心靠 `ThumbnailSlide`，互動與選取則在各場景容器內自己處理
+```text
+slides store
+  -> ThumbnailSlide
+    -> ThumbnailElement
+      -> BaseXxxElement(target="thumbnail")
+  -> 被 Editor / Screen / Mobile / Export / LinkDialog / Templates 重用
+```
 
-## 返回上層
+## 速查結論
 
-- [回到 PPTist 導航](../README.md)
+- 縮圖不是獨立資料模型，它直接重用 `slides store` 裡的投影片資料。
+- `ThumbnailSlide` 的外框尺寸由 `size` 與 `viewportRatio` 決定。
+- 內部元素仍用原始畫布尺寸排版，再靠 `transform: scale(...)` 縮小。
+- `visible` 配合 `useLoadSlides` 只控制「何時真正渲染內容」，不是控制資料有沒有存在。
+- 場景元件大多不碰元素細節，只決定縮圖要多大、怎麼排、點了之後做什麼。
+- 匯出圖片與 PDF 本質上也是拿 `ThumbnailSlide` 做大尺寸渲染，不是另一套畫圖邏輯。
